@@ -94,12 +94,13 @@
           <p class="section-title" style="margin-bottom:2px">Visitor Logs</p>
           <span id="logCount" style="font-size:13px;color:#718096">Loading...</span>
         </div>
-        <div style="display:flex;gap:8px">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <button id="autoRefreshBtn" onclick="toggleAutoRefresh()" style="padding:6px 14px;font-size:12px;font-weight:500;border-radius:8px;border:none;cursor:pointer;background:#48bb78;color:#fff;transition:background 0.2s">⏱ Auto Refresh: ON</button>
           <button class="btn-primary" onclick="loadLogs()" style="padding:6px 14px;font-size:12px">🔄 Refresh</button>
           <button class="btn-red"     onclick="clearLogs()" style="padding:6px 14px;font-size:12px">🗑 Clear</button>
         </div>
       </div>
-      <p class="refresh-note">Auto-refreshes every 5 seconds</p>
+      <p class="refresh-note" id="refreshNote">Auto-refreshes every 5 seconds</p>
       <div id="logContainer" style="margin-top:12px">
         <div class="empty-state">Loading logs...</div>
       </div>
@@ -274,10 +275,42 @@ async function clearLogs() {
   loadLogs();
 }
 
-// Auto-refresh logs every 5 seconds when on logs tab
-setInterval(()=>{
-  if(document.getElementById('tab-logs').classList.contains('active')) loadLogs();
-}, 5000);
+let autoRefreshInterval = null;
+
+function startAutoRefresh() {
+  if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+  autoRefreshInterval = setInterval(() => {
+    if (document.getElementById('tab-logs').classList.contains('active')) {
+      loadLogs();
+    }
+  }, 5000);
+}
+
+function stopAutoRefresh() {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval);
+    autoRefreshInterval = null;
+  }
+}
+
+function toggleAutoRefresh() {
+  const btn = document.getElementById('autoRefreshBtn');
+  const note = document.getElementById('refreshNote');
+  if (autoRefreshInterval) {
+    stopAutoRefresh();
+    btn.textContent = '⏱ Auto Refresh: OFF';
+    btn.style.background = '#a0aec0';
+    note.textContent = 'Manual refresh only';
+  } else {
+    startAutoRefresh();
+    btn.textContent = '⏱ Auto Refresh: ON';
+    btn.style.background = '#48bb78';
+    note.textContent = 'Auto-refreshes every 5 seconds';
+  }
+}
+
+// Start auto-refresh by default
+startAutoRefresh();
 </script>
 </body>
 </html>
